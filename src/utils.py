@@ -207,11 +207,27 @@ def add_custom_css():
 
 
 def calculate_fairness_metrics(
-    df, sensitive_column, truth_col="uds_positive", predicted_col="cps_reported"
+    df, sensitive_column, truth_col="uds_positive", predicted_col="uds_ordered"
 ):
+    # Calculate count and percentage of uds_ordered
+    ordered_count = df.groupby("maternal_race")["uds_ordered"].sum()
+    total_count = df.groupby("maternal_race")["uds_ordered"].count()
+    percent_ordered = (ordered_count / total_count) * 100
+
+    # Calculate count and percentage of uds_positive
+    positive_count = (
+        df[df["uds_ordered"] == 1].groupby("maternal_race")["uds_positive"].sum()
+    )
+    percent_positive = (positive_count / ordered_count) * 100
+
     # Initialize an empty dictionary to store the results
     result_dict = {
         sensitive_column: [],
+        "Total Count": [],
+        "Ordered Count": [],
+        "(Ordered/Total) %": [],
+        "Positive Count": [],
+        "(Positive/Ordered) %": [],
         "tp": [],
         "tn": [],
         "fp": [],
@@ -252,6 +268,19 @@ def calculate_fairness_metrics(
         result_dict["tnr"].append(tnr)
         result_dict["fpr"].append(fpr)
         result_dict["ppp"].append(ppp)
+
+        if group in ordered_count.index:
+            result_dict["Total Count"].append(total_count[group])
+            result_dict["Ordered Count"].append(ordered_count[group])
+            result_dict["(Ordered/Total) %"].append(percent_ordered[group])
+            result_dict["Positive Count"].append(positive_count.get(group, 0))
+            result_dict["(Positive/Ordered) %"].append(percent_positive.get(group, 0))
+        else:
+            result_dict["Total Count"].append(0)
+            result_dict["Ordered Count"].append(0)
+            result_dict["(Ordered/Total) %"].append(0)
+            result_dict["Positive Count"].append(0)
+            result_dict["(Positive/Ordered) %"].append(0)
 
     # Convert the dictionary to a DataFrame
     result_df = pd.DataFrame(result_dict)

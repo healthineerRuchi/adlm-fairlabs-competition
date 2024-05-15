@@ -45,6 +45,9 @@ def page_upload_file():
                 df["cps_reported"] = df[output_column].notna().astype(int)
                 drug_tst_cols = [col for col in df.columns if "detected" in col]
                 df["uds_positive"] = df[drug_tst_cols].any(axis=1).astype(int)
+                df["uds_ordered"] = df["uds_collection_date"].apply(
+                    lambda x: 1 if pd.notnull(x) and x != "" else 0
+                )
 
                 outliers, outliers_encounter_id = utils.detect_outliers_iqr(
                     df, "maternal_age", 2.5
@@ -89,7 +92,7 @@ def page_explore_data():
     with col1:
         if st.checkbox("Maternal Age Distribution"):
             st.subheader("Histogram Settings")
-            bin_size = st.slider("Bin Size", min_value=1, max_value=10, value=5)
+            bin_size = st.slider("Bin Size", min_value=1, max_value=10, value=3)
             utils.create_histogram(df["maternal_age"], bin_size)
 
     with col2:
@@ -102,7 +105,7 @@ def page_explore_data():
 
 
 def page_track_fairness():
-    st.title("Fairness")
+    st.title("Insights")
 
     # Check if the before_df is in the session state
     if "before_df" not in st.session_state or st.session_state.before_df is None:
@@ -127,8 +130,8 @@ def main():
 
     selected = option_menu(
         menu_title=None,
-        options=["Upload", "Explore", "Analyse"],
-        icons=["house", "book", "envelope"],
+        options=["Upload", "Explore", "Insights"],
+        icons=["cloud-upload", "bar-chart", "lightbulb"],
         orientation="horizontal",
     )
 
@@ -136,7 +139,7 @@ def main():
         page_upload_file()
     if selected == "Explore":
         page_explore_data()
-    if selected == "Analyse":
+    if selected == "Insights":
         page_track_fairness()
 
 
