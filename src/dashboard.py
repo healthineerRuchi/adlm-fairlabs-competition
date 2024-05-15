@@ -95,7 +95,7 @@ def page_explore_data():
         st.markdown(
             f"""
             <div class="metric-box">
-                <h4 style="margin-bottom:0;"># Mothers</h2>
+                <h4 style="margin-bottom:0;color:#009999">Total Mothers</h2>
                 <h1 style="margin-top:5px;">{format("6528")}</h1>
             </div>
             """,
@@ -105,7 +105,7 @@ def page_explore_data():
         st.markdown(
             f"""
             <div class="metric-box">
-                <h4 style="margin-bottom:0;"># Encounters</h2>
+                <h4 style="margin-bottom:0;color:#009999">Total Encounters</h2>
                 <h1 style="margin-top:5px;">{format("6643")}</h1>
             </div>
             """,
@@ -115,7 +115,7 @@ def page_explore_data():
         st.markdown(
             f"""
             <div class="metric-box">
-                <h4 style="margin-bottom:0;"># UDS ordered</h2>
+                <h4 style="margin-bottom:0;color:#009999">Total UDS ordered</h2>
                 <h1 style="margin-top:5px;">{format("700")}</h1>
             </div>
             """,
@@ -125,7 +125,7 @@ def page_explore_data():
         st.markdown(
             f"""
             <div class="metric-box">
-                <h4 style="margin-bottom:0;"># positive cases</h2>
+                <h4 style="margin-bottom:0;color:#009999"">Total positive cases</h2>
                 <h1 style="margin-top:5px;">{format("442")}</h1>
             </div>
             """,
@@ -135,7 +135,7 @@ def page_explore_data():
         st.markdown(
             f"""
             <div class="metric-box">
-                <h4 style="margin-bottom:0;"># CPS reporting</h2>
+                <h4 style="margin-bottom:0;color:#009999">Total CPS Reporting</h2>
                 <h1 style="margin-top:5px;">{format("385")}</h1>
             </div>
             """,
@@ -174,7 +174,7 @@ def page_explore_data():
 
 
 def page_track_fairness():
-    st.title("Insights")
+    # st.title("Insights")
 
     # Check if the before_df, after_df, and df are in the session state
     if "before_df" not in st.session_state or st.session_state.before_df is None:
@@ -189,13 +189,13 @@ def page_track_fairness():
         st.warning("No data available. Please upload a file on Page 1.")
         return
 
-    time_period = st.radio(
+    # Move the radio buttons to the sidebar
+    time_period = st.sidebar.radio(
         "Select Time Period:", ("All Time", "Pre-Intervention", "Post-Intervention")
     )
 
-    # Determine which DataFrame to use based on the selected checkbox
     # Determine which DataFrame to use based on the selected radio button
-    if time_period == "All Data":
+    if time_period == "All Time":
         selected_df = st.session_state.df
     elif time_period == "Pre-Intervention":
         selected_df = st.session_state.before_df
@@ -212,37 +212,6 @@ def page_track_fairness():
     result_df = result_df.sort_values(by="Total Count", ascending=False)
 
     st.write(result_df)
-
-    if time_period == "After Intervention":
-        utils.plot_order_indication_counts(st.session_state.after_df)
-
-    cols = st.columns(len(result_df))
-    for i in range(len(result_df)):
-        # Create columns within the Streamlit app; adjust the number as needed
-        with cols[
-            i % 3
-        ]:  # This ensures distribution across the columns; adjust modulus as per number of columns
-            fig = utils.create_pie_charts(
-                dataframe=result_df,
-                column_name="(Ordered/Total) %",
-                index=i,
-                colors=["#009999", "#ec6602"],
-            )
-            st.plotly_chart(fig, use_container_width=True)
-    st.subheader("Tested Positive")
-    cols = st.columns(len(result_df))
-    for i in range(len(result_df)):
-        # Create columns within the Streamlit app; adjust the number as needed
-        with cols[
-            i % 3
-        ]:  # This ensures distribution across the columns; adjust modulus as per number of columns
-            fig = utils.create_pie_charts(
-                dataframe=result_df,
-                column_name="(Positive/Ordered) %",
-                index=i,
-                colors=["#ec6602", "#009999"],
-            )
-            st.plotly_chart(fig, use_container_width=True)
 
     black_ordered_total_pct = result_df[
         result_df["maternal_race"] == "Black or African American"
@@ -265,7 +234,7 @@ def page_track_fairness():
         after_result_df, "Black or African American", "White"
     )
     delta = None
-    if time_period == "After Intervention":
+    if time_period == "Post-Intervention":
         delta = (
             (demographic_parity_before - demographic_parity_after)
             * 100
@@ -273,32 +242,71 @@ def page_track_fairness():
         )
         delta = format(delta, ".2f")
 
-    st.markdown(
-        """
-        <style>
-        .metric-box {
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-shadow: 5px 5px 20px rgba(0,0,0,0.1);
-            padding: 10px;
-            margin: 10px 0;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
+    st.metric(
+        label="Demographic Parity Ratio",
+        value=format(demographic_parity_ratio, ".2f"),
+        delta=delta,
+        help="Proportion of positive predictions in Blacks / Proportion of positive predictions in Whites",
     )
 
-    col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
-    with col1:
-        st.markdown(
-            f"""
-                <div class="metric-box">
-                    <h4 style="margin-bottom:0;">Demographic Parity</h2>
-                    <h1 style="margin-top:5px;">{format(demographic_parity_ratio, ".2f")}</h1>
-                </div>
-                """,
-            unsafe_allow_html=True,
-        )
+    # st.markdown(
+    #     """
+    #     <style>
+    #     .metric-box {
+    #         border: 1px solid #ccc;
+    #         border-radius: 5px;
+    #         box-shadow: 5px 5px 20px rgba(0,0,0,0.1);
+    #         padding: 10px;
+    #         margin: 10px 0;
+    #     }
+    #     </style>
+    #     """,
+    #     unsafe_allow_html=True,
+    # )
+
+    # col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
+    # with col1:
+    #     st.markdown(
+    #         f"""
+    #             <div class="metric-box">
+    #                 <h4 style="margin-bottom:0;">Demographic Parity</h2>
+    #                 <h1 style="margin-top:5px;">{format(demographic_parity_ratio, ".2f")}</h1>
+    #             </div>
+    #             """,
+    #         unsafe_allow_html=True,
+    #     )
+
+    cols = st.columns(len(result_df))
+    for i in range(len(result_df)):
+        # Create columns within the Streamlit app; adjust the number as needed
+        with cols[
+            i % 3
+        ]:  # This ensures distribution across the columns; adjust modulus as per number of columns
+            fig = utils.create_pie_charts(
+                dataframe=result_df,
+                column_name="(Ordered/Total) %",
+                index=i,
+                colors=["#009999", "#ec6602"],
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+    st.subheader("Tested Positive")
+    cols = st.columns(len(result_df))
+    for i in range(len(result_df)):
+        # Create columns within the Streamlit app; adjust the number as needed
+        with cols[
+            i % 3
+        ]:  # This ensures distribution across the columns; adjust modulus as per number of columns
+            fig = utils.create_pie_charts(
+                dataframe=result_df,
+                column_name="(Positive/Ordered) %",
+                index=i,
+                colors=["#ec6602", "#009999"],
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+    if time_period == "Post-Intervention":
+        utils.plot_order_indication_counts(st.session_state.after_df)
 
 
 def main():
