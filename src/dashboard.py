@@ -7,6 +7,16 @@ import base64
 
 import utils
 
+from streamlit_option_menu import option_menu
+
+
+st.set_page_config(
+    page_title="My Streamlit App",
+    page_icon=":guardsman:",  # Example emoji as an icon
+    layout="wide",  # This sets the layout to wide screen
+    initial_sidebar_state="expanded",  # Sidebar state can be "expanded" or "collapsed"
+)
+
 
 def upload_file():
     st.title("Page 1: Upload File")
@@ -48,7 +58,9 @@ def upload_file():
                     )
                     st.success("Outliers removed!")
 
-                thresh = st.slider("Select Threshold", 0, 100, 3)
+                thresh = st.slider(
+                    "Select minimum frequency threshold (%) to include rows", 0, 100, 3
+                )
                 st.write("Selected Threshold:", thresh, "%")
 
                 df = utils.filter_with_percentage(df, "maternal_race", thresh)
@@ -61,7 +73,13 @@ def upload_file():
 
 
 def main():
-    upload_file()
+    selected = option_menu(
+        menu_title=None,
+        options=["Upload", "Explore", "Analyse"],
+        icons=["house", "book", "envelope"],
+        orientation="horizontal",
+    )
+    # upload_file()
 
 
 if __name__ == "__main__":
