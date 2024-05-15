@@ -140,6 +140,9 @@ def page_track_fairness():
     result_df = utils.calculate_fairness_metrics(
         df=selected_df, sensitive_column="maternal_race"
     )
+
+    if time_period == "After Intervention":
+        utils.plot_order_indication_counts(st.session_state.after_df)
     st.write(result_df)
 
 
