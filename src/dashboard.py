@@ -107,14 +107,38 @@ def page_explore_data():
 def page_track_fairness():
     st.title("Insights")
 
-    # Check if the before_df is in the session state
+    # Check if the before_df, after_df, and df are in the session state
     if "before_df" not in st.session_state or st.session_state.before_df is None:
         st.warning("No data available. Please upload a file on Page 1.")
         return
 
-    before_df = st.session_state.before_df
+    if "after_df" not in st.session_state or st.session_state.after_df is None:
+        st.warning("No data available. Please upload a file on Page 1.")
+        return
+
+    if "df" not in st.session_state or st.session_state.df is None:
+        st.warning("No data available. Please upload a file on Page 1.")
+        return
+
+    time_period = st.radio(
+        "Select Time Period:", ("All Time", "Before Intervention", "After Intervention")
+    )
+
+    # Determine which DataFrame to use based on the selected checkbox
+    # Determine which DataFrame to use based on the selected radio button
+    if time_period == "All Time":
+        selected_df = st.session_state.df
+    elif time_period == "Before Intervention":
+        selected_df = st.session_state.before_df
+    elif time_period == "After Intervention":
+        selected_df = st.session_state.after_df
+    else:
+        st.warning("Please select a time period.")
+        return
+
+    # Calculate fairness metrics
     result_df = utils.calculate_fairness_metrics(
-        df=before_df, sensitive_column="maternal_race"
+        df=selected_df, sensitive_column="maternal_race"
     )
     st.write(result_df)
 
