@@ -99,6 +99,19 @@ def page_explore_data():
             st.plotly_chart(fig)
 
 
+def page_track_fairness():
+    st.title("Fairness")
+
+    if st.session_state.before_df is not None:
+        before_df = st.session_state.before_df
+        result_df = utils.calculate_fairness_metrics(
+            df=before_df, sensitive_column="maternal_race"
+        )
+        st.write(result_df)
+    else:
+        st.warning("No data available. Please upload a file on Page 1.")
+
+
 def main():
     selected = option_menu(
         menu_title=None,
@@ -112,7 +125,7 @@ def main():
     if selected == "Explore":
         page_explore_data()
     if selected == "Analyse":
-        st.title("Coming soon")
+        page_track_fairness()
 
 
 if __name__ == "__main__":

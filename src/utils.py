@@ -204,3 +204,56 @@ def add_custom_css():
     """,
         unsafe_allow_html=True,
     )
+
+
+def calculate_fairness_metrics(
+    df, sensitive_column, truth_col="uds_positive", predicted_col="cps_reported"
+):
+    # Initialize an empty dictionary to store the results
+    result_dict = {
+        sensitive_column: [],
+        "tp": [],
+        "tn": [],
+        "fp": [],
+        "fn": [],
+        "proportion_positive": [],
+        "tpr": [],
+        "tnr": [],
+        "fpr": [],
+        "ppp": [],
+    }
+
+    # Group the DataFrame by the sensitive column
+    grouped = df.groupby(sensitive_column)
+
+    # Calculate metrics for each group
+    for group, data in grouped:
+        tp = sum((data[truth_col] == 1) & (data[predicted_col] == 1))
+        tn = sum((data[truth_col] == 0) & (data[predicted_col] == 0))
+        fp = sum((data[truth_col] == 0) & (data[predicted_col] == 1))
+        fn = sum((data[truth_col] == 1) & (data[predicted_col] == 0))
+
+        total = len(data)
+        proportion_positive = data[predicted_col].mean()
+        tpr = tp / (tp + fn) if (tp + fn) > 0 else 0
+        tnr = tn / (tn + fp) if (tn + fp) > 0 else 0
+        fpr = fp / (fp + tn) if (fp + tn) > 0 else 0
+        ### predicted as positive
+        ppp = (tp + fp) / (tp + fp + tn + fn)
+
+        # Append metrics to the result dictionary
+        result_dict[sensitive_column].append(group)
+        result_dict["tp"].append(tp)
+        result_dict["tn"].append(tn)
+        result_dict["fp"].append(fp)
+        result_dict["fn"].append(fn)
+        result_dict["proportion_positive"].append(proportion_positive)
+        result_dict["tpr"].append(tpr)
+        result_dict["tnr"].append(tnr)
+        result_dict["fpr"].append(fpr)
+        result_dict["ppp"].append(ppp)
+
+    # Convert the dictionary to a DataFrame
+    result_df = pd.DataFrame(result_dict)
+
+    return result_df
