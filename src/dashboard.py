@@ -9,7 +9,6 @@ import utils
 
 from streamlit_option_menu import option_menu
 
-
 st.set_page_config(
     page_title="My Streamlit App",
     page_icon=":guardsman:",  # Example emoji as an icon
@@ -18,7 +17,7 @@ st.set_page_config(
 )
 
 
-def upload_file():
+def page_upload_file():
     st.title("Page 1: Upload File")
 
     uploaded_files = st.file_uploader(
@@ -72,6 +71,34 @@ def upload_file():
                 st.session_state.after_df = after_df
 
 
+def page_explore_data():
+    st.title("Explore Data")
+
+    utils.add_custom_css()
+
+    df = st.session_state.df
+
+    if df is None:
+        st.warning("No data available. Please upload a file on Page 1.")
+
+    # Create responsive columns
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.checkbox("Maternal Age Distribution"):
+            st.subheader("Histogram Settings")
+            bin_size = st.slider("Bin Size", min_value=1, max_value=10, value=5)
+            utils.create_histogram(df["maternal_age"], bin_size)
+
+    with col2:
+        if st.checkbox("View Race Distribution"):
+            st.subheader("Race Distribution Pie Chart")
+            fig = utils.create_pie_chart(
+                df, "maternal_race", colors=["#009999", "gray", "brown"]
+            )
+            st.plotly_chart(fig)
+
+
 def main():
     selected = option_menu(
         menu_title=None,
@@ -79,7 +106,13 @@ def main():
         icons=["house", "book", "envelope"],
         orientation="horizontal",
     )
-    # upload_file()
+
+    if selected == "Upload":
+        page_upload_file()
+    if selected == "Explore":
+        page_explore_data()
+    if selected == "Analyse":
+        st.title("Coming soon")
 
 
 if __name__ == "__main__":
