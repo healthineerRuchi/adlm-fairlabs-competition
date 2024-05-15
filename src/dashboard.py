@@ -76,10 +76,12 @@ def page_explore_data():
 
     utils.add_custom_css()
 
-    df = st.session_state.df
-
-    if df is None:
+    # Check if the dataframe is in the session state
+    if "df" not in st.session_state or st.session_state.df is None:
         st.warning("No data available. Please upload a file on Page 1.")
+        return
+
+    df = st.session_state.df
 
     # Create responsive columns
     col1, col2 = st.columns(2)
@@ -102,17 +104,27 @@ def page_explore_data():
 def page_track_fairness():
     st.title("Fairness")
 
-    if st.session_state.before_df is not None:
-        before_df = st.session_state.before_df
-        result_df = utils.calculate_fairness_metrics(
-            df=before_df, sensitive_column="maternal_race"
-        )
-        st.write(result_df)
-    else:
+    # Check if the before_df is in the session state
+    if "before_df" not in st.session_state or st.session_state.before_df is None:
         st.warning("No data available. Please upload a file on Page 1.")
+        return
+
+    before_df = st.session_state.before_df
+    result_df = utils.calculate_fairness_metrics(
+        df=before_df, sensitive_column="maternal_race"
+    )
+    st.write(result_df)
 
 
 def main():
+    # Initialize session state variables
+    if "df" not in st.session_state:
+        st.session_state.df = None
+    if "before_df" not in st.session_state:
+        st.session_state.before_df = None
+    if "after_df" not in st.session_state:
+        st.session_state.after_df = None
+
     selected = option_menu(
         menu_title=None,
         options=["Upload", "Explore", "Analyse"],
