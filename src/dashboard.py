@@ -75,7 +75,76 @@ def page_upload_file():
 
 
 def page_explore_data():
-    st.title("Explore Data")
+    st.title("Data Summary")
+    st.markdown(
+        """
+        <style>
+        .metric-box {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-shadow: 5px 5px 20px rgba(0,0,0,0.1);
+            padding: 10px;
+            margin: 10px 0;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
+    with col1:
+        st.markdown(
+            f"""
+            <div class="metric-box">
+                <h4 style="margin-bottom:0;"># Mothers</h2>
+                <h1 style="margin-top:5px;">{format("6528")}</h1>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with col2:
+        st.markdown(
+            f"""
+            <div class="metric-box">
+                <h4 style="margin-bottom:0;"># Encounters</h2>
+                <h1 style="margin-top:5px;">{format("6643")}</h1>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with col3:
+        st.markdown(
+            f"""
+            <div class="metric-box">
+                <h4 style="margin-bottom:0;"># UDS ordered</h2>
+                <h1 style="margin-top:5px;">{format("700")}</h1>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with col4:
+        st.markdown(
+            f"""
+            <div class="metric-box">
+                <h4 style="margin-bottom:0;"># positive cases</h2>
+                <h1 style="margin-top:5px;">{format("442")}</h1>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with col5:
+        st.markdown(
+            f"""
+            <div class="metric-box">
+                <h4 style="margin-bottom:0;"># CPS reporting</h2>
+                <h1 style="margin-top:5px;">{format("385")}</h1>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    # st.metric(
+    #     label="Number of Mothers",
+    #     value=format("371"),
+    # )
 
     utils.add_custom_css()
 
@@ -90,18 +159,18 @@ def page_explore_data():
     col1, col2 = st.columns(2)
 
     with col1:
-        if st.checkbox("Maternal Age Distribution"):
-            st.subheader("Histogram Settings")
-            bin_size = st.slider("Bin Size", min_value=1, max_value=10, value=3)
-            utils.create_histogram(df["maternal_age"], bin_size)
+        # if st.checkbox("Maternal Age Distribution"):
+        st.subheader("Maternal Age Distribution")
+        # bin_size = st.slider("Bin Size", min_value=1, max_value=10, value=3)
+        utils.create_histogram(df["maternal_age"], bin_size=2)
 
     with col2:
-        if st.checkbox("View Race Distribution"):
-            st.subheader("Race Distribution Pie Chart")
-            fig = utils.create_pie_chart(
-                df, "maternal_race", colors=["#009999", "gray", "brown"]
-            )
-            st.plotly_chart(fig)
+        # if st.checkbox("View Race Distribution"):
+        st.subheader("Race Distribution")
+        fig = utils.create_pie_chart(
+            df, "maternal_race", colors=["#009999", "gray", "brown"]
+        )
+        st.plotly_chart(fig)
 
 
 def page_track_fairness():
@@ -121,16 +190,16 @@ def page_track_fairness():
         return
 
     time_period = st.radio(
-        "Select Time Period:", ("All Time", "Before Intervention", "After Intervention")
+        "Select Time Period:", ("All Time", "Pre-Intervention", "Post-Intervention")
     )
 
     # Determine which DataFrame to use based on the selected checkbox
     # Determine which DataFrame to use based on the selected radio button
-    if time_period == "All Time":
+    if time_period == "All Data":
         selected_df = st.session_state.df
-    elif time_period == "Before Intervention":
+    elif time_period == "Pre-Intervention":
         selected_df = st.session_state.before_df
-    elif time_period == "After Intervention":
+    elif time_period == "Post-Intervention":
         selected_df = st.session_state.after_df
     else:
         st.warning("Please select a time period.")
@@ -140,10 +209,96 @@ def page_track_fairness():
     result_df = utils.calculate_fairness_metrics(
         df=selected_df, sensitive_column="maternal_race"
     )
+    result_df = result_df.sort_values(by="Total Count", ascending=False)
+
+    st.write(result_df)
 
     if time_period == "After Intervention":
         utils.plot_order_indication_counts(st.session_state.after_df)
-    st.write(result_df)
+
+    cols = st.columns(len(result_df))
+    for i in range(len(result_df)):
+        # Create columns within the Streamlit app; adjust the number as needed
+        with cols[
+            i % 3
+        ]:  # This ensures distribution across the columns; adjust modulus as per number of columns
+            fig = utils.create_pie_charts(
+                dataframe=result_df,
+                column_name="(Ordered/Total) %",
+                index=i,
+                colors=["#009999", "#ec6602"],
+            )
+            st.plotly_chart(fig, use_container_width=True)
+    st.subheader("Tested Positive")
+    cols = st.columns(len(result_df))
+    for i in range(len(result_df)):
+        # Create columns within the Streamlit app; adjust the number as needed
+        with cols[
+            i % 3
+        ]:  # This ensures distribution across the columns; adjust modulus as per number of columns
+            fig = utils.create_pie_charts(
+                dataframe=result_df,
+                column_name="(Positive/Ordered) %",
+                index=i,
+                colors=["#ec6602", "#009999"],
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+    black_ordered_total_pct = result_df[
+        result_df["maternal_race"] == "Black or African American"
+    ]["(Ordered/Total) %"].values[0]
+    white_ordered_total_pct = result_df[result_df["maternal_race"] == "White"][
+        "(Ordered/Total) %"
+    ].values[0]
+    demographic_parity_ratio = black_ordered_total_pct / white_ordered_total_pct
+
+    before_result_df = utils.calculate_fairness_metrics(
+        df=st.session_state.before_df, sensitive_column="maternal_race"
+    )
+    after_result_df = utils.calculate_fairness_metrics(
+        df=st.session_state.after_df, sensitive_column="maternal_race"
+    )
+    demographic_parity_before = utils.demographic_parity(
+        before_result_df, "Black or African American", "White"
+    )
+    demographic_parity_after = utils.demographic_parity(
+        after_result_df, "Black or African American", "White"
+    )
+    delta = None
+    if time_period == "After Intervention":
+        delta = (
+            (demographic_parity_before - demographic_parity_after)
+            * 100
+            / demographic_parity_before
+        )
+        delta = format(delta, ".2f")
+
+    st.markdown(
+        """
+        <style>
+        .metric-box {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-shadow: 5px 5px 20px rgba(0,0,0,0.1);
+            padding: 10px;
+            margin: 10px 0;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
+    with col1:
+        st.markdown(
+            f"""
+                <div class="metric-box">
+                    <h4 style="margin-bottom:0;">Demographic Parity</h2>
+                    <h1 style="margin-top:5px;">{format(demographic_parity_ratio, ".2f")}</h1>
+                </div>
+                """,
+            unsafe_allow_html=True,
+        )
 
 
 def main():
