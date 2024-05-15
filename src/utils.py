@@ -105,8 +105,9 @@ def filter_with_percentage(data, column, percent_thresh):
 
 
 def split_data_by_date(data, split_date="2028-03-01"):
-    before_df = data[data["uds_collection_date"] < split_date]
-    after_df = data[data["uds_collection_date"] >= split_date]
+    before_df = data[pd.to_datetime(data["delivery_date"]) < split_date]
+    after_df = data[pd.to_datetime(data["delivery_date"]) >= split_date]
+    st.write(before_df.shape, after_df.shape, data.shape)
     return before_df, after_df
 
 
@@ -286,3 +287,23 @@ def calculate_fairness_metrics(
     result_df = pd.DataFrame(result_dict)
 
     return result_df
+
+
+def plot_order_indication_counts(df):
+    order_counts = df["order_indication"].value_counts().reset_index()
+    order_counts.columns = ["order_indication", "count"]
+    order_counts = order_counts.sort_values(by="count", ascending=False)
+
+    # Create a horizontal bar graph using Plotly with custom colors
+    fig = px.bar(
+        order_counts,
+        x="count",
+        y="order_indication",
+        orientation="h",
+        labels={"count": "Count", "order_indication": "Order Indication"},
+        title="Frequency of Order Indications",
+        category_orders={"order_indication": order_counts["order_indication"].tolist()},
+        color_discrete_sequence=["#009999"],
+    )  # Customize the color here
+
+    st.plotly_chart(fig)
