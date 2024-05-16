@@ -76,6 +76,7 @@ pandocfilters==1.5.0
 parso==0.8.4
 pickleshare==0.7.5
 pillow==10.3.0
+pkgconfig
 pip==24.0
 platformdirs==4.2.1
 plotly==5.19.0
@@ -96,9 +97,6 @@ PySocks==1.7.1
 python-dateutil==2.9.0
 python-json-logger==2.0.7
 pytz==2024.1
-# Remove pywin32 for Linux
-# Remove pywinpty for Linux
-# Remove win-inet-pton for Linux
 PyYAML==6.0.1
 pyzmq==25.1.2
 referencing==0.30.2
