@@ -18,64 +18,120 @@ st.set_page_config(
 
 
 def page_upload_file():
-    st.title("Page 1: Upload File")
 
-    uploaded_files = st.file_uploader(
-        "Choose files", type=["csv", "txt", "xlsx"], accept_multiple_files=True
-    )
+    # st.title("Upload and Process Files")
+    # Define columns
+    col1, col2, col3 = st.columns([2, 2, 2])
+
+    with col1:
+        # st.title("Upload & Process file")
+        uploaded_files = st.file_uploader(
+            "Upload the raw data",
+            type=["csv", "txt", "xlsx"],
+            accept_multiple_files=True,
+        )
+        if uploaded_files:
+            for uploaded_file in uploaded_files:
+                df = utils.read_file(uploaded_file)
+                if df is not None:
+                    st.write("Data Dimensions:", df.shape)
+
     if uploaded_files:
-        for uploaded_file in uploaded_files:
-            df = utils.read_file(uploaded_file)
-            if st.checkbox("Preview DataFrame"):
+        with (
+            col1
+        ):  # You might want to move these controls to another column if they are dependent on the file upload
+            if st.checkbox("Preview DataFrame", key="preview"):
                 st.write("Preview of the DataFrame:")
                 st.write(df)
 
-            if df is not None:
-                col1, col2 = st.columns(2)
-                with col1:
-                    sensitive_column = st.selectbox(
-                        "Select sensitive column",
-                        df.columns,
-                    )
-                with col2:
-                    output_column = st.multiselect(
-                        "Select output column", df.columns, default="cps_reporting_date"
-                    )
+        # Decision processes based on DataFrame
+        col5, col6 = st.columns([1, 2])
+        # with col5:
+        #     sensitive_column = st.selectbox(
+        #         "Select sensitive column",
+        #         df.columns,
+        #     )
+        with col5:
+            default_index = (
+                df.columns.tolist().index("maternal_race")
+                if "maternal_race" in df.columns
+                else 0
+            )
+            sensitive_column = st.selectbox(
+                "Select sensitive column",
+                df.columns,
+                index=default_index,  # Set the default index
+            )
+        with col5:
+            output_column = st.multiselect(
+                "Select output column", df.columns, default="cps_reporting_date"
+            )
 
-                df["cps_reported"] = df[output_column].notna().astype(int)
-                drug_tst_cols = [col for col in df.columns if "detected" in col]
-                df["uds_positive"] = df[drug_tst_cols].any(axis=1).astype(int)
-                df["uds_ordered"] = df["uds_collection_date"].apply(
-                    lambda x: 1 if pd.notnull(x) and x != "" else 0
+        # Further data processing
+        df["cps_reported"] = df[output_column].notna().astype(int)
+        drug_test_cols = [col for col in df.columns if "detected" in col]
+        df["uds_positive"] = df[drug_test_cols].any(axis=1).astype(int)
+        df["uds_ordered"] = df["uds_collection_date"].apply(
+            lambda x: 1 if pd.notnull(x) and x != "" else 0
+        )
+
+        with col2:
+            # st.header("Process File")
+
+            remove_corrupted = st.checkbox(
+                "Remove bad data", value=True, key="remove_corrupted"
+            )
+            if remove_corrupted:
+                df = utils.remove_corrupted_rows(df, "maternal_race")
+                st.success("Corrupted rows removed!")
+                st.write("Data Dimensions:", df.shape)
+
+        with col3:
+            outliers, outliers_encounter_id = utils.detect_outliers_iqr(
+                df, "maternal_age", 2.5
+            )
+            remove = st.checkbox("Remove outliers", value=True, key="remove_outlier")
+            if remove:
+                df = utils.remove_rows_by_column_value(
+                    df, "encounter_id", outliers_encounter_id
+                )
+                st.success("Outliers removed!")
+                st.write("Data Dimensions:", df.shape)
+
+                st.markdown(
+                    '<hr style="border:2px solid gray">', unsafe_allow_html=True
                 )
 
-                outliers, outliers_encounter_id = utils.detect_outliers_iqr(
-                    df, "maternal_age", 2.5
-                )
+            thresh = st.slider(
+                "Select minimum frequency of maternal race (%) to include rows. Slide to 0 for all data",
+                0,
+                100,
+                3,
+            )
+            st.write("Selected Threshold:", thresh, "%")
 
-                remove = st.checkbox("Remove outliers", value=True)
-                if remove:
-                    df = utils.remove_rows_by_column_value(
-                        df, "encounter_id", outliers_encounter_id
-                    )
-                    st.success("Outliers removed!")
+            df = utils.filter_with_percentage(df, "maternal_race", thresh)
+            before_df, after_df = utils.split_data_by_date(df, "2028-03-01")
 
-                thresh = st.slider(
-                    "Select minimum frequency threshold (%) to include rows", 0, 100, 3
-                )
-                st.write("Selected Threshold:", thresh, "%")
-
-                df = utils.filter_with_percentage(df, "maternal_race", thresh)
-                before_df, after_df = utils.split_data_by_date(df, "2028-03-01")
-
-                # Store dataframes in session state
-                st.session_state.df = df
-                st.session_state.before_df = before_df
-                st.session_state.after_df = after_df
+            # Store dataframes in session state
+            st.session_state.df = df
+            st.session_state.before_df = before_df
+            st.session_state.after_df = after_df
 
 
 def page_explore_data():
+
     st.title("Data Summary")
+
+    # Check if the dataframe is in the session state
+    if "df" not in st.session_state or st.session_state.df is None:
+        st.warning("No data available. Please upload a file on Page 1.")
+        return
+
+    df = st.session_state.df
+    before_df = st.session_state.before_df
+    after_df = st.session_state.after_df
+
     st.markdown(
         """
         <style>
@@ -90,13 +146,16 @@ def page_explore_data():
         """,
         unsafe_allow_html=True,
     )
+    mothers, encounters, uds_ordered, positive_cases, cps_reported = utils.get_counts(
+        df
+    )
     col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
     with col1:
         st.markdown(
             f"""
             <div class="metric-box">
                 <h4 style="margin-bottom:0;color:#009999">Total Mothers</h2>
-                <h1 style="margin-top:5px;">{format("6528")}</h1>
+                <h1 style="margin-top:5px;">{format(mothers)}</h1>
             </div>
             """,
             unsafe_allow_html=True,
@@ -106,7 +165,7 @@ def page_explore_data():
             f"""
             <div class="metric-box">
                 <h4 style="margin-bottom:0;color:#009999">Total Encounters</h2>
-                <h1 style="margin-top:5px;">{format("6643")}</h1>
+                <h1 style="margin-top:5px;">{format(encounters)}</h1>
             </div>
             """,
             unsafe_allow_html=True,
@@ -116,7 +175,7 @@ def page_explore_data():
             f"""
             <div class="metric-box">
                 <h4 style="margin-bottom:0;color:#009999">Total UDS ordered</h2>
-                <h1 style="margin-top:5px;">{format("700")}</h1>
+                <h1 style="margin-top:5px;">{format(uds_ordered)}</h1>
             </div>
             """,
             unsafe_allow_html=True,
@@ -126,7 +185,7 @@ def page_explore_data():
             f"""
             <div class="metric-box">
                 <h4 style="margin-bottom:0;color:#009999"">Total positive cases</h2>
-                <h1 style="margin-top:5px;">{format("442")}</h1>
+                <h1 style="margin-top:5px;">{format(positive_cases)}</h1>
             </div>
             """,
             unsafe_allow_html=True,
@@ -136,7 +195,7 @@ def page_explore_data():
             f"""
             <div class="metric-box">
                 <h4 style="margin-bottom:0;color:#009999">Total CPS Reporting</h2>
-                <h1 style="margin-top:5px;">{format("385")}</h1>
+                <h1 style="margin-top:5px;">{format(cps_reported)}</h1>
             </div>
             """,
             unsafe_allow_html=True,
@@ -147,13 +206,6 @@ def page_explore_data():
     # )
 
     utils.add_custom_css()
-
-    # Check if the dataframe is in the session state
-    if "df" not in st.session_state or st.session_state.df is None:
-        st.warning("No data available. Please upload a file on Page 1.")
-        return
-
-    df = st.session_state.df
 
     # Create responsive columns
     col1, col2 = st.columns(2)

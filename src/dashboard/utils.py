@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import streamlit as st
+import plotly.graph_objs as go
 
 
 def read_file(uploaded_file):
@@ -49,11 +50,11 @@ def detect_outliers_iqr(data, column, multiplier=1.5):
         (data[column] < lower_bound) | (data[column] > upper_bound), "encounter_id"
     ].tolist()
 
-    st.write(
-        f"Outliers detected in the column {column} using IQR method with multiplier {multiplier}:"
-    )
-    for i, outlier in enumerate(outliers):
-        st.write(f"Outlier: {outlier}, Encounter ID: {outliers_encounter_id[i]}")
+    # st.write(
+    #     f"Outliers detected in the column {column} using IQR method with multiplier {multiplier}:"
+    # )
+    # for i, outlier in enumerate(outliers):
+    # st.write(f"Outlier: {outlier}, Encounter ID: {outliers_encounter_id[i]}")
 
     return outliers, outliers_encounter_id
 
@@ -71,8 +72,7 @@ def remove_rows_by_column_value(data, column_name, column_values):
         cleaned_data (DataFrame): DataFrame with specified rows removed.
     """
     cleaned_data = data[~data[column_name].isin(column_values)].copy()
-    st.write("Dataframe shape before removing rows:", data.shape)
-    st.write("Dataframe shape after removing rows:", cleaned_data.shape)
+    # st.write("Dataframe shape before removing rows:", data.shape)
 
     return cleaned_data
 
@@ -107,7 +107,7 @@ def filter_with_percentage(data, column, percent_thresh):
 def split_data_by_date(data, split_date="2028-03-01"):
     before_df = data[pd.to_datetime(data["delivery_date"]) < split_date]
     after_df = data[pd.to_datetime(data["delivery_date"]) >= split_date]
-    st.write(before_df.shape, after_df.shape, data.shape)
+    # st.write(before_df.shape, after_df.shape, data.shape)
     return before_df, after_df
 
 
@@ -134,7 +134,7 @@ def create_pie_chart(df, column, colors=None, width=600, height=400):
         freq_df,
         names=column,
         values="Count",
-        title=f"{column} Distribution",
+        # title=f"{column} Distribution",
         color_discrete_sequence=colors,
     )
 
@@ -145,7 +145,45 @@ def create_pie_chart(df, column, colors=None, width=600, height=400):
     return fig
 
 
-def create_histogram(data, bin_size, width=600, height=400):
+def create_pie_charts(dataframe, column_name, index, colors=None):
+    """
+    Generates a pie chart for a specified column at a given index from the dataframe.
+
+    This function creates a pie chart with two segments: the specified percentage from
+    the dataframe and the remaining percentage to make up 100%.
+
+    Args:
+        dataframe (pd.DataFrame): The dataframe containing the data.
+        column_name (str): The name of the column for which the pie chart is generated.
+                           This column should contain the percentage value.
+        index (int): The index of the row in the dataframe from which to generate the pie chart.
+
+    Returns:
+        go.Figure: A Plotly graph object Figure containing the pie chart.
+    """
+    # Retrieve the specific row based on index
+    row = dataframe.iloc[index]
+
+    # Prepare labels and values for the pie chart
+    labels = [column_name, "Remaining (%)"]
+    values = [
+        row[column_name],
+        100 - row[column_name],
+    ]  # Calculate the remaining percentage
+
+    # Create a Plotly pie chart figure
+    fig = go.Figure(data=[go.Pie(labels=labels, values=values)])
+
+    # Update layout with a title using the race column, adapt this if your DataFrame has a different title column
+    fig.update_layout(title=f"{row['maternal_race']}")
+
+    if colors:
+        fig.update_traces(marker=dict(colors=colors))
+
+    return fig
+
+
+def create_histogram(data, bin_size=3, width=600, height=400):
     """
     Create a fancy interactive histogram.
 
@@ -161,7 +199,7 @@ def create_histogram(data, bin_size, width=600, height=400):
         data,
         x=data,
         nbins=int((data.max() - data.min()) / bin_size),
-        title="Distribution of Maternal Ages",
+        title="",
         labels={"x": "Maternal Age", "y": "Frequency"},
         color_discrete_sequence=["#009999"],
     )
@@ -307,3 +345,37 @@ def plot_order_indication_counts(df):
     )  # Customize the color here
 
     st.plotly_chart(fig)
+
+
+def demographic_parity(df, group1, group2):
+    group1_ordered_total_pct = df[df["maternal_race"] == group1][
+        "(Ordered/Total) %"
+    ].values[0]
+    group2_ordered_total_pct = df[df["maternal_race"] == group2][
+        "(Ordered/Total) %"
+    ].values[0]
+    demographic_parity_ratio = group1_ordered_total_pct / group2_ordered_total_pct
+    return demographic_parity_ratio
+
+
+def get_counts(df):
+    mothers = df.mother_id.nunique()
+    encounters = df.encounter_id.nunique()
+    uds_ordered = df.uds_ordered.sum()
+    positive_cases = df.uds_positive.sum()
+    cps_reported = df.cps_reported.sum()
+    return mothers, encounters, uds_ordered, positive_cases, cps_reported
+
+
+def remove_corrupted_rows(df, column_name):
+    """
+    Filter DataFrame to remove rows containing '\r' or '\n' in the specified column.
+
+    Args:
+    - df: DataFrame to filter
+    - column: Column to check for '\r' or '\n'
+
+    Returns:
+    - Filtered DataFrame
+    """
+    return df[~df[column_name].str.contains(r"\r|\n")]
