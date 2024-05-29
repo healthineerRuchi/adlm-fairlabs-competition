@@ -1,20 +1,15 @@
 import streamlit as st
 import plotly.express as px
-import matplotlib.pyplot as plt
+
+# import matplotlib.pyplot as plt
 import pandas as pd
-import numpy as np
+
+# import numpy as np
 import base64
 
 import utils
 
 from streamlit_option_menu import option_menu
-
-st.set_page_config(
-    page_title="My Streamlit App",
-    page_icon=":guardsman:",  # Example emoji as an icon
-    layout="wide",  # This sets the layout to wide screen
-    initial_sidebar_state="expanded",  # Sidebar state can be "expanded" or "collapsed"
-)
 
 
 def page_upload_file():
@@ -362,7 +357,12 @@ def page_track_fairness():
 
 
 def main():
-    # Initialize session state variables
+    st.set_page_config(
+        page_title="Fairness Dashboard",
+        page_icon=":guardsman:",  # Example emoji as an icon
+        layout="wide",  # This sets the layout to wide screen
+        initial_sidebar_state="expanded",  # Sidebar state can be "expanded" or "collapsed"
+    )
     if "df" not in st.session_state:
         st.session_state.df = None
     if "before_df" not in st.session_state:
